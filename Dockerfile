@@ -5,5 +5,5 @@ RUN gradle assemble
 FROM eclipse-temurin:17-jre
 EXPOSE 8080
 RUN mkdir /app
-COPY --from=build /home/gradle/src/build/libs/*.jar /app/runner-service.jar
+COPY --from=build /home/gradle/src/build/libs/*.jar /app/authorization-service.jar
 ENTRYPOINT ["java", "-jar","/app/authorization-service.jar"]
