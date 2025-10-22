@@ -83,5 +83,5 @@ jobs:
             pwd
             cd infra
             echo ${{ secrets.GITHUB_TOKEN }} | sudo docker login -u ${{ github.actor }} --password-stdin ghcr.io
-            sudo docker-compose -f docker-compose.dev.yml.yml pull authorization-service
-            sudo docker-compose -f docker-compose.dev.yml.yml up -d authorization-service
+            sudo docker compose -f docker-compose.dev.yml.yml pull authorization-service
+            sudo docker compose -f docker-compose.dev.yml.yml up -d authorization-service
