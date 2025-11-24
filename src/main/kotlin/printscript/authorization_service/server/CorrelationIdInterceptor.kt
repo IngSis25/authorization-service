@@ -27,4 +27,3 @@ class CorrelationIdInterceptor : ClientHttpRequestInterceptor {
         const val CORRELATION_ID_HEADER: String = "X-Correlation-Id"
     }
 }
-

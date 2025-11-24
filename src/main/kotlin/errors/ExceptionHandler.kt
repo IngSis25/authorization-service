@@ -11,4 +11,3 @@ class ExceptionHandler {
         return ResponseEntity.badRequest().body(ex.message)
     }
 }
-

@@ -1,11 +1,11 @@
 package services
 
-import org.springframework.http.ResponseEntity
-import org.springframework.stereotype.Service
+import dtos.UserSnippetDto
 import entities.Author
 import entities.UserSnippet
-import dtos.UserSnippetDto
 import errors.UserNotFoundException
+import org.springframework.http.ResponseEntity
+import org.springframework.stereotype.Service
 import repositories.UserRepository
 import repositories.UserSnippetsRepository
 
@@ -15,8 +15,9 @@ class UserService(
     private val userSnippetsRepository: UserSnippetsRepository,
 ) {
     fun getByEmail(email: String): Author? {
-        val user = userRepository.findByEmail(email)
-            ?: throw UserNotFoundException("User not found when trying to get by email")
+        val user =
+            userRepository.findByEmail(email)
+                ?: throw UserNotFoundException("User not found when trying to get by email")
         return user
     }
 
@@ -30,7 +31,10 @@ class UserService(
             ?: throw UserNotFoundException("User not found when trying to get by auth0Id")
     }
 
-    fun createUser(email: String, auth0Id: String): Author {
+    fun createUser(
+        email: String,
+        auth0Id: String,
+    ): Author {
         val author = Author(email = email, auth0Id = auth0Id)
         return userRepository.save(author)
     }
@@ -59,9 +63,14 @@ class UserService(
         return updatedUser
     }
 
-    fun addSnippetToUser(email: String, snippetId: Long, role: String): ResponseEntity<String> {
-        val user = getByEmail(email)
-            ?: throw UserNotFoundException("User not found when trying to add a snippet to it")
+    fun addSnippetToUser(
+        email: String,
+        snippetId: Long,
+        role: String,
+    ): ResponseEntity<String> {
+        val user =
+            getByEmail(email)
+                ?: throw UserNotFoundException("User not found when trying to add a snippet to it")
         val snippets = UserSnippet(author = user, snippetId = snippetId, role = role)
 
         if (userSnippetRelationExists(user, snippetId)) {
@@ -76,7 +85,10 @@ class UserService(
         }
     }
 
-    private fun userSnippetRelationExists(author: Author, snippetId: Long): Boolean {
+    private fun userSnippetRelationExists(
+        author: Author,
+        snippetId: Long,
+    ): Boolean {
         userSnippetsRepository.findByAuthorId(author.id!!).forEach {
             if (it.snippetId == snippetId) {
                 return true
@@ -85,9 +97,13 @@ class UserService(
         return false
     }
 
-    fun checkIfOwner(snippetId: Long, email: String): ResponseEntity<String> {
-        val user = userRepository.findByEmail(email)
-            ?: throw UserNotFoundException("User not found when trying to check if it is the owner of a snippet")
+    fun checkIfOwner(
+        snippetId: Long,
+        email: String,
+    ): ResponseEntity<String> {
+        val user =
+            userRepository.findByEmail(email)
+                ?: throw UserNotFoundException("User not found when trying to check if it is the owner of a snippet")
 
         userSnippetsRepository.findByAuthorId(user.id!!).forEach {
             if (it.snippetId == snippetId) {
@@ -102,10 +118,10 @@ class UserService(
     }
 
     fun getSnippetsId(id: Long): ResponseEntity<List<Long>> {
-        val user = userRepository.findById(id)
-            .orElseThrow { UserNotFoundException("User not found when trying to get snippets") }
+        val user =
+            userRepository.findById(id)
+                .orElseThrow { UserNotFoundException("User not found when trying to get snippets") }
         val snippetsId = userSnippetsRepository.findByAuthorId(user.id!!).map { it.id }
         return ResponseEntity.ok(snippetsId)
     }
 }
-

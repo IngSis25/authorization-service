@@ -14,13 +14,10 @@ data class Author(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
     @Column(nullable = false, unique = true)
     val email: String,
-
     @Column(nullable = true, unique = true)
     val auth0Id: String,
-
     @OneToMany(mappedBy = "author")
     val snippets: List<UserSnippet> = emptyList(),
 ) {
@@ -34,4 +31,3 @@ data class Author(
 data class CreateUser(
     val email: String,
 )
-

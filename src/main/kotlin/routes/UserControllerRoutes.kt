@@ -1,5 +1,9 @@
 package routes
 
+import dtos.UserDTO
+import dtos.UserSnippetDto
+import entities.Author
+import entities.CreateUser
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -7,10 +11,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
-import entities.Author
-import entities.CreateUser
-import dtos.UserDTO
-import dtos.UserSnippetDto
 import request_types.CheckRequest
 import request_types.UserSnippet
 
@@ -33,19 +33,25 @@ interface UserControllerRoutes {
      * Obtiene un usuario por su ID.
      */
     @GetMapping("/get/{id}")
-    fun getUserById(@PathVariable id: Long): ResponseEntity<UserDTO>
+    fun getUserById(
+        @PathVariable id: Long,
+    ): ResponseEntity<UserDTO>
 
     /**
      * Obtiene un usuario por su Auth0 ID.
      */
     @GetMapping("/auth0/{auth0Id}")
-    fun getUserByAuth0Id(@PathVariable auth0Id: String): ResponseEntity<UserDTO>
+    fun getUserByAuth0Id(
+        @PathVariable auth0Id: String,
+    ): ResponseEntity<UserDTO>
 
     /**
      * Obtiene un usuario por su email.
      */
     @GetMapping("/{email}")
-    fun getUserByEmail(@PathVariable email: String): ResponseEntity<Author>
+    fun getUserByEmail(
+        @PathVariable email: String,
+    ): ResponseEntity<Author>
 
     /**
      * Obtiene todos los usuarios del sistema.
@@ -57,13 +63,17 @@ interface UserControllerRoutes {
      * Obtiene los snippets de un usuario por su Auth0 ID.
      */
     @GetMapping("/get-user-snippets/{userId}")
-    fun getUserSnippets(@PathVariable userId: String): ResponseEntity<List<UserSnippetDto>>
+    fun getUserSnippets(
+        @PathVariable userId: String,
+    ): ResponseEntity<List<UserSnippetDto>>
 
     /**
      * Actualiza un usuario existente.
      */
     @PutMapping("/{email}")
-    fun updateUser(@RequestBody author: Author): ResponseEntity<Author>
+    fun updateUser(
+        @RequestBody author: Author,
+    ): ResponseEntity<Author>
 
     /**
      * Agrega un snippet a un usuario con un rol específico.
@@ -78,18 +88,23 @@ interface UserControllerRoutes {
      * Verifica si un usuario es el owner de un snippet.
      */
     @PostMapping("/check-owner")
-    fun checkIfOwner(@RequestBody checkRequest: CheckRequest): ResponseEntity<String>
+    fun checkIfOwner(
+        @RequestBody checkRequest: CheckRequest,
+    ): ResponseEntity<String>
 
     /**
      * Valida un token JWT y retorna el ID del usuario si es válido.
      */
     @GetMapping("/validate")
-    fun validate(@RequestHeader("Authorization") token: String): ResponseEntity<Long>
+    fun validate(
+        @RequestHeader("Authorization") token: String,
+    ): ResponseEntity<Long>
 
     /**
      * Obtiene los IDs de los snippets de un usuario por su ID.
      */
     @GetMapping("/snippets/{id}")
-    fun getUserSnippetsId(@PathVariable id: Long): ResponseEntity<List<Long>>
+    fun getUserSnippetsId(
+        @PathVariable id: Long,
+    ): ResponseEntity<List<Long>>
 }
-

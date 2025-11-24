@@ -16,4 +16,3 @@ class AudienceValidator(private val audience: String) : OAuth2TokenValidator<Jwt
         }
     }
 }
-

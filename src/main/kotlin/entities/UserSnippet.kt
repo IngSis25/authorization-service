@@ -14,13 +14,10 @@ data class UserSnippet(
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     val id: Long = 0,
-
     @ManyToOne
     val author: Author,
-
     @Column(nullable = false)
     val snippetId: Long,
-
     @Column(nullable = false)
     val role: String,
 ) {
@@ -30,4 +27,3 @@ data class UserSnippet(
         return "UserSnippet(snippetId=$snippetId, user=${author.email}, role='$role')"
     }
 }
-

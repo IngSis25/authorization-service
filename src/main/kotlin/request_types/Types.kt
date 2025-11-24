@@ -9,4 +9,3 @@ data class CheckRequest(
     val snippetId: Long,
     val email: String,
 )
-

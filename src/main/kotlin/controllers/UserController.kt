@@ -1,5 +1,10 @@
 package controllers
 
+import dtos.UserDTO
+import dtos.UserSnippetDto
+import entities.Author
+import entities.CreateUser
+import errors.UserNotFoundException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.jwt.JwtDecoder
@@ -11,13 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import entities.Author
-import entities.CreateUser
-import dtos.UserDTO
-import dtos.UserSnippetDto
 import request_types.CheckRequest
 import request_types.UserSnippet
-import errors.UserNotFoundException
 import routes.UserControllerRoutes
 import services.UserService
 
@@ -25,21 +25,24 @@ import services.UserService
 @RequestMapping("/api/user")
 class UserController(
     private val userService: UserService,
-    private val jwtDecoder: JwtDecoder,
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private val jwtDecoder: JwtDecoder?,
 ) : UserControllerRoutes {
-
     @PostMapping("/")
     override fun create(
         @RequestHeader("Authorization") token: String,
         @RequestBody createUser: CreateUser,
     ): ResponseEntity<Author> {
-        val auth0Id = jwtDecoder.decode(token.removePrefix("Bearer ")).claims["sub"] as String
+        val auth0Id =
+            jwtDecoder?.decode(token.removePrefix("Bearer "))?.claims?.get("sub") as? String
+                ?: throw IllegalStateException("JwtDecoder not available")
 
-        val existingUser = try {
-            userService.getByEmail(createUser.email)
-        } catch (e: UserNotFoundException) {
-            null
-        }
+        val existingUser =
+            try {
+                userService.getByEmail(createUser.email)
+            } catch (e: UserNotFoundException) {
+                null
+            }
         return if (existingUser != null) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(existingUser)
         } else {
@@ -49,13 +52,17 @@ class UserController(
     }
 
     @GetMapping("/get/{id}")
-    override fun getUserById(@PathVariable id: Long): ResponseEntity<UserDTO> {
+    override fun getUserById(
+        @PathVariable id: Long,
+    ): ResponseEntity<UserDTO> {
         val user = userService.getById(id)
         return ResponseEntity.ok(UserDTO(user))
     }
 
     @GetMapping("/auth0/{auth0Id}")
-    override fun getUserByAuth0Id(@PathVariable auth0Id: String): ResponseEntity<UserDTO> {
+    override fun getUserByAuth0Id(
+        @PathVariable auth0Id: String,
+    ): ResponseEntity<UserDTO> {
         val user = userService.getByAuthId(auth0Id)
         return ResponseEntity.ok(UserDTO(user!!))
     }
@@ -68,12 +75,16 @@ class UserController(
     }
 
     @PutMapping("/{email}")
-    override fun updateUser(@RequestBody author: Author): ResponseEntity<Author> {
+    override fun updateUser(
+        @RequestBody author: Author,
+    ): ResponseEntity<Author> {
         return ResponseEntity.ok(userService.updateUser(author))
     }
 
     @GetMapping("/get-user-snippets/{userId}")
-    override fun getUserSnippets(@PathVariable userId: String): ResponseEntity<List<UserSnippetDto>> {
+    override fun getUserSnippets(
+        @PathVariable userId: String,
+    ): ResponseEntity<List<UserSnippetDto>> {
         val snippets = userService.getSnippetsOfUser(userId)
         return ResponseEntity.ok(snippets)
     }
@@ -87,15 +98,19 @@ class UserController(
     }
 
     @PostMapping("/check-owner")
-    override fun checkIfOwner(@RequestBody checkRequest: CheckRequest): ResponseEntity<String> {
+    override fun checkIfOwner(
+        @RequestBody checkRequest: CheckRequest,
+    ): ResponseEntity<String> {
         return userService.checkIfOwner(checkRequest.snippetId, checkRequest.email)
     }
 
     @GetMapping("/validate")
-    override fun validate(@RequestHeader("Authorization") token: String): ResponseEntity<Long> {
+    override fun validate(
+        @RequestHeader("Authorization") token: String,
+    ): ResponseEntity<Long> {
         val actualToken = token.removePrefix("Bearer ")
-        val jwt = jwtDecoder.decode(actualToken)
-        val auth0Id = jwt.claims["sub"] as String
+        val jwt = jwtDecoder?.decode(actualToken) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+        val auth0Id = jwt.claims["sub"] as? String ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
         val user = userService.getByAuthId(auth0Id)
         return if (user != null) {
@@ -106,13 +121,16 @@ class UserController(
     }
 
     @GetMapping("/snippets/{id}")
-    override fun getUserSnippetsId(@PathVariable id: Long): ResponseEntity<List<Long>> {
+    override fun getUserSnippetsId(
+        @PathVariable id: Long,
+    ): ResponseEntity<List<Long>> {
         return userService.getSnippetsId(id)
     }
 
     @GetMapping("/{email}")
-    override fun getUserByEmail(@PathVariable email: String): ResponseEntity<Author> {
+    override fun getUserByEmail(
+        @PathVariable email: String,
+    ): ResponseEntity<Author> {
         return ResponseEntity.ok(userService.getByEmail(email)!!)
     }
 }
-

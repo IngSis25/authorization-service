@@ -26,7 +26,6 @@ class RequestLogFilter : Filter {
         chain: FilterChain,
     ) {
         if (request is HttpServletRequest && response is HttpServletResponse) {
-
             val uri = request.requestURI
             val method = request.method
             val prefix = "$method $uri"
@@ -51,4 +50,3 @@ class RequestLogFilter : Filter {
         private val logger: Logger = LoggerFactory.getLogger(RequestLogFilter::class.java)
     }
 }
-

@@ -13,4 +13,3 @@ data class UserDTO(
         auth0Id = author.auth0Id,
     )
 }
-

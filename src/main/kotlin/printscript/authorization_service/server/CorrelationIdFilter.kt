@@ -19,7 +19,11 @@ import java.util.UUID
 @Order(1)
 class CorrelationIdFilter : Filter {
     @Throws(IOException::class, ServletException::class)
-    override fun doFilter(request: ServletRequest, response: ServletResponse, chain: FilterChain) {
+    override fun doFilter(
+        request: ServletRequest,
+        response: ServletResponse,
+        chain: FilterChain,
+    ) {
         if (request is HttpServletRequest && response is HttpServletResponse) {
             var correlationId = request.getHeader(CorrelationIdInterceptor.CORRELATION_ID_HEADER)
             if (correlationId == null) {
@@ -40,4 +44,3 @@ class CorrelationIdFilter : Filter {
         }
     }
 }
-

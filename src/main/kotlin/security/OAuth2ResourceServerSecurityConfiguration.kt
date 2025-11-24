@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
 @EnableWebSecurity
+@org.springframework.context.annotation.Profile("!test")
 class OAuth2ResourceServerSecurityConfiguration(
     @Value("\${auth0.audience}")
     val audience: String,
@@ -42,4 +43,3 @@ class OAuth2ResourceServerSecurityConfiguration(
         return jwtDecoder
     }
 }
-
