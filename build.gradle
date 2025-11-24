@@ -13,11 +13,11 @@ jacoco {
     toolVersion = '0.8.11'
 }
 
-tasks.withType(Test).configureEach{
+tasks.withType(Test).configureEach {
     finalizedBy(tasks.named('jacocoTestReport'))
 }
 
-tasks.named('jacocoTestReport'){
+tasks.named('jacocoTestReport') {
     dependsOn(tasks.named('test'))
     reports {
         xml.required.set(true)
@@ -25,7 +25,8 @@ tasks.named('jacocoTestReport'){
         csv.required.set(false)
     }
 }
-tasks.named('jacocoTestCoverageVerification'){
+
+tasks.named('jacocoTestCoverageVerification') {
     dependsOn(tasks.named('test'))
     violationRules {
         rule {
@@ -33,79 +34,15 @@ tasks.named('jacocoTestCoverageVerification'){
         }
     }
 }
-tasks.named('check'){
-    dependsOn(tasks.named('jacocoTestCoverageVerification'))
-}
-
-group = 'printscript'
-version = '0.0.1-SNAPSHOT'
-description = 'Snippet Service '
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-
-    // ~~~~ Spring Initializr deps ~~~~
-
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
-    implementation 'org.jetbrains.kotlin:kotlin-reflect' //  kotlin only
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactor' // kotlin only
-    implementation 'io.projectreactor.kotlin:reactor-kotlin-extensions' // kotlin only
-
-    runtimeOnly 'org.postgresql:postgresql'
-    runtimeOnly 'com.h2database:h2'
-
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
-    testImplementation 'io.projectreactor:reactor-test' // kotlin only
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    testImplementation 'org.springframework.boot:spring-boot-starter-webflux' // is only used to be able to use WebTestClient
-    testImplementation 'org.amshove.kluent:kluent:1.73' // use fluent assertions
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    runtimeOnly("org.postgresql:postgresql:42.7.4")
-}
-
-kotlin {
-    compilerOptions {
-        freeCompilerArgs.addAll '-Xjsr305=strict'
-    }
-}
-
-allOpen {
-    annotation 'jakarta.persistence.Entity'
-    annotation 'jakarta.persistence.MappedSuperclass'
-    annotation 'jakarta.persistence.Embeddable'
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
-}
 
 tasks.named('check') {
+    dependsOn(tasks.named('jacocoTestCoverageVerification'))
     dependsOn(tasks.named('ktlintCheck'))
 }
 
 group = 'printscript'
 version = '0.0.1-SNAPSHOT'
-description = 'Runner Service'
+description = 'Authorization Service'
 
 java {
     toolchain {
@@ -118,15 +55,36 @@ repositories {
 }
 
 dependencies {
+    // Spring Boot dependencies
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactor'
+    implementation 'io.projectreactor.kotlin:reactor-kotlin-extensions'
+
+    // Database
     runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.h2database:h2'
+
+    // OAuth2 Resource Server (para validar JWT de Auth0)
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    implementation 'org.springframework.security:spring-security-oauth2-jose' // JWT decoding and validation
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // Testing
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux' // is only used to be able to use WebTestClient
+    testImplementation 'org.amshove.kluent:kluent:1.73' // use fluent assertions
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:4.1.0' // mockito for kotlin
 }
 
 kotlin {
