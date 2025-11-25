@@ -1,6 +1,5 @@
 package services
 
-import dtos.UserSnippetDto
 import entities.Author
 import entities.UserSnippet
 import errors.UserNotFoundException
@@ -13,12 +12,10 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argThat
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import repositories.UserRepository
 import repositories.UserSnippetsRepository
 import java.util.Optional
@@ -328,4 +325,3 @@ class UserServiceTest {
         verify(userSnippetsRepository).findByAuthorId(author.id!!)
     }
 }
-
