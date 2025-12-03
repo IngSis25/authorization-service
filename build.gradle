@@ -85,6 +85,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux' // is only used to be able to use WebTestClient
     testImplementation 'org.amshove.kluent:kluent:1.73' // use fluent assertions
     testImplementation 'org.mockito.kotlin:mockito-kotlin:4.1.0' // mockito for kotlin
+    implementation("org.jlleitschuh.gradle.ktlint:org.jlleitschuh.gradle.ktlint.gradle.plugin:13.1.0")
+
 }
 
 kotlin {
@@ -102,6 +104,11 @@ allOpen {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.named("check"){
+    dependsOn(tasks.named("ktlintCheck"))
+}
+
 tasks.register('installGitHooks', Copy) {
     from("$rootDir/hooks/pre-commit")
     into("$rootDir/.git/hooks")
