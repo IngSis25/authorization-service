@@ -1,4 +1,4 @@
-package printscript.authorization_service
+package authorization
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -7,5 +7,5 @@ import org.springframework.boot.runApplication
 class AuthorizationServiceApplication
 
 fun main(args: Array<String>) {
-    runApplication<AuthorizationServiceApplication>(*args)
+    runApplication<authorization.AuthorizationServiceApplication>(*args)
 }
