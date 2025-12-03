@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: authorization-service
+
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: sa
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+
+  # Deshabilitar seguridad en tests
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.resourceserver.OAuth2ResourceServerAutoConfiguration
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://dummy-issuer.com
+          client-id: dummy-client-id
+          client-secret: dummy-client-secret
+
+auth0:
+  audience: dummy-audience
+

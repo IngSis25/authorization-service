@@ -97,7 +97,12 @@ class UserController(
         @PathVariable email: String,
         @RequestBody addSnippet: UserSnippet,
     ): ResponseEntity<String> {
-        return userService.addSnippetToUser(email, addSnippet.snippetId, addSnippet.role)
+        println(">>> [AUTH] add-snippet email=$email body=$addSnippet")
+        return userService.addSnippetToUser(
+            email = email,
+            snippetId = addSnippet.snippetId,
+            role = addSnippet.role,
+        )
     }
 
     @PostMapping("/check-owner")

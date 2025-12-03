@@ -1,8 +1,12 @@
 package services
 
-import printscript.authorization_service.entities.Author
-import printscript.authorization_service.entities.UserSnippet
-import printscript.authorization_service.errors.UserNotFoundException
+
+import authorization.entities.Author
+import authorization.entities.UserSnippet
+import authorization.errors.UserNotFoundException
+import authorization.repositories.UserRepository
+import authorization.repositories.UserSnippetsRepository
+import authorization.services.UserService
 import org.amshove.kluent.shouldBeEqualTo
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -16,9 +20,7 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
-import printscript.authorization_service.repositories.UserRepository
-import printscript.authorization_service.repositories.UserSnippetsRepository
-import printscript.authorization_service.services.UserService
+
 import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)

@@ -16,30 +16,13 @@ services:
 
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
+      DB_NAME: authorization-serviceDB
+      DB_HOST: postgres_db
+      DB_PORT: 5432
 
-    depends_on:
-        - db
     networks:
       - printscript-net
 
-  db:
-    container_name: postgres_db
-    image: postgres:16
-    ports:
-      - 5434:5432
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - printscript-net
-volumes:
-  pgdata:
 networks:
   printscript-net:
     name: printscript-net
