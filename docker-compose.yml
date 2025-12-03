@@ -7,14 +7,26 @@ services:
     ports:
       - 8000:8080
     environment:
+      AUTH_SERVER_URI: https://dev-2dc74voarsscuyp0.us.auth0.com/
+
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${AUTH_SERVER_URI}
+
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE}
+
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
 
+    depends_on:
+        - db
+    networks:
+      - printscript-net
+
   db:
-    container_name: postgres_db2
+    container_name: postgres_db
     image: postgres:16
     ports:
       - 5434:5432
@@ -24,5 +36,10 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - printscript-net
 volumes:
   pgdata:
+networks:
+  printscript-net:
+    name: printscript-net
