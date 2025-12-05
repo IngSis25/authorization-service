@@ -113,7 +113,7 @@ class UserController(
         val auth0Id = jwt.claims["sub"] as? String ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
         val user = userService.getByAuthId(auth0Id)
-        return if (user != null) {
+        return if (user != null && user.id != null) {
             ResponseEntity.ok(user.id)
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).build()

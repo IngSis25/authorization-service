@@ -121,7 +121,7 @@ class UserService(
         val user =
             userRepository.findById(id)
                 .orElseThrow { UserNotFoundException("User not found when trying to get snippets") }
-        val snippetsId = userSnippetsRepository.findByAuthorId(user.id!!).map { it.id }
+        val snippetsId = userSnippetsRepository.findByAuthorId(user.id!!).map { it.snippetId }
         return ResponseEntity.ok(snippetsId)
     }
 }
