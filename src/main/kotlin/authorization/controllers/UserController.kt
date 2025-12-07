@@ -66,7 +66,9 @@ class UserController(
                 val usersDTO = users.map { user -> UserDTO(user) }
                 ResponseEntity.ok(usersDTO)
             }
-            .onErrorResume { Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()) }
+            .onErrorResume {
+                Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
+            }
     }
 
     @GetMapping("/get-user-snippets/{auth0Id}")
@@ -83,18 +85,38 @@ class UserController(
         @PathVariable snippetId: Long,
         @RequestBody addSnippet: AddSnippetRequest,
     ): Mono<ResponseEntity<String>> {
-        val auth0Id = extractAuth0Id(token)
+        // 1) Validamos que el token sea válido (dueño), pero NO usamos su auth0Id para la relación
+        extractAuth0Id(token)
 
-        println(">>> [AUTH] add-snippet auth0Id=$auth0Id snippetId=$snippetId role=${addSnippet.role}")
+        println(
+            ">>> [AUTH] add-snippet request: snippetId=$snippetId " +
+                "email=${addSnippet.email} role=${addSnippet.role}",
+        )
 
-        return userService.addSnippetToUser(
-            auth0Id = auth0Id,
-            snippetId = snippetId,
-            role = addSnippet.role,
-        ).onErrorResume { e: Throwable ->
-            println(">>> [AUTH] Error in addSnippetToUser: ${e.message}")
-            Mono.just(ResponseEntity.badRequest().body("Error adding snippet to user: ${e.message}"))
-        }
+        // 2) Buscamos al usuario invitado por email
+        return userService.getByEmail(addSnippet.email)
+            // 3) Cuando lo encontramos, usamos su auth0Id para crear el UserSnippet
+            .flatMap { user ->
+                println(">>> [AUTH] Found invited user auth0Id=${user.user_id}")
+                userService.addSnippetToUser(
+                    auth0Id = user.user_id,
+                    snippetId = snippetId,
+                    role = addSnippet.role,
+                )
+            }
+            .onErrorResume { e: Throwable ->
+                println(">>> [AUTH] Error in addSnippetToUser: ${e.message}")
+                when (e) {
+                    is UserNotFoundException ->
+                        Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found"))
+                    else ->
+                        Mono.just(
+                            ResponseEntity
+                                .badRequest()
+                                .body("Error adding snippet to user: ${e.message}"),
+                        )
+                }
+            }
     }
 
     @PostMapping("/check-owner/{snippetId}")

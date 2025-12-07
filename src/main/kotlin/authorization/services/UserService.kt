@@ -60,16 +60,21 @@ class UserService(
     ): Mono<ResponseEntity<String>> {
         return Mono.fromCallable {
             try {
+                println(">>> [UserService] addSnippetToUser: auth0Id=$auth0Id, snippetId=$snippetId, role=$role")
                 val existingRelation = userSnippetsRepository.findByAuth0IdAndSnippetId(auth0Id, snippetId)
                 if (existingRelation != null) {
+                    println(">>> [UserService] Relation already exists, skipping save")
                     ResponseEntity.ok("User already has this snippet.")
                 } else {
                     val userSnippet = UserSnippet(auth0Id = auth0Id, snippetId = snippetId, role = role)
-                    userSnippetsRepository.save(userSnippet)
+                    println(">>> [UserService] Saving UserSnippet: $userSnippet")
+                    val saved = userSnippetsRepository.save(userSnippet)
+                    println(">>> [UserService] UserSnippet saved successfully with id: ${saved.id}")
                     ResponseEntity.ok("Snippet added to user")
                 }
             } catch (e: Exception) {
-                println("Error saving user snippet: ${e.message}")
+                println(">>> [UserService] ERROR saving user snippet: ${e.message}")
+                e.printStackTrace()
                 ResponseEntity.badRequest().body("Error adding snippet to user: ${e.message}")
             }
         }
