@@ -23,6 +23,9 @@ services:
       DB_HOST: postgres_db
       DB_PORT: 5432
 
+      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY}
+      NEW_RELIC_APP_NAME: Snippet Searcher
+
     networks:
       - printscript-net
 
