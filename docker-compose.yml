@@ -34,4 +34,4 @@ services:
 
 networks:
   printscript-net:
-    name: printscript-net
+    external: true
