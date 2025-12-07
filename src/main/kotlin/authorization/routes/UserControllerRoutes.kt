@@ -1,19 +1,16 @@
 package authorization.routes
 
+import authorization.dtos.AddSnippetRequest
 import authorization.dtos.UserDTO
 import authorization.dtos.UserSnippetDto
-import authorization.entities.Author
 import authorization.entities.CreateUser
-import authorization.entities.UserSnippet
-import authorization.request_types.CheckRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
-
+import reactor.core.publisher.Mono
 
 /**
  * Interfaz que define las rutas del controlador de usuarios.
@@ -21,22 +18,14 @@ import org.springframework.web.bind.annotation.RequestHeader
  */
 interface UserControllerRoutes {
     /**
-     * Crea un nuevo usuario en el sistema.
+     * Verifica si un usuario existe en Auth0.
      * Requiere un token JWT válido de Auth0.
      */
-    @PostMapping
+    @PostMapping("/") // coincide con @PostMapping("/") del UserController
     fun create(
         @RequestHeader("Authorization") token: String,
         @RequestBody createUser: CreateUser,
-    ): ResponseEntity<Author>
-
-    /**
-     * Obtiene un usuario por su ID.
-     */
-    @GetMapping("/get/{id}")
-    fun getUserById(
-        @PathVariable id: Long,
-    ): ResponseEntity<UserDTO>
+    ): Mono<ResponseEntity<UserDTO>>
 
     /**
      * Obtiene un usuario por su Auth0 ID.
@@ -44,7 +33,7 @@ interface UserControllerRoutes {
     @GetMapping("/auth0/{auth0Id}")
     fun getUserByAuth0Id(
         @PathVariable auth0Id: String,
-    ): ResponseEntity<UserDTO>
+    ): Mono<ResponseEntity<UserDTO>>
 
     /**
      * Obtiene un usuario por su email.
@@ -52,60 +41,47 @@ interface UserControllerRoutes {
     @GetMapping("/{email}")
     fun getUserByEmail(
         @PathVariable email: String,
-    ): ResponseEntity<Author>
+    ): Mono<ResponseEntity<UserDTO>>
 
     /**
-     * Obtiene todos los usuarios del sistema.
+     * Obtiene todos los usuarios del sistema desde Auth0.
      */
-    @GetMapping
-    fun getAllUsers(): ResponseEntity<List<UserDTO>>
+    @GetMapping("/")
+    fun getAllUsers(): Mono<ResponseEntity<List<UserDTO>>>
 
     /**
      * Obtiene los snippets de un usuario por su Auth0 ID.
      */
-    @GetMapping("/get-user-snippets/{userId}")
+    @GetMapping("/get-user-snippets/{auth0Id}")
     fun getUserSnippets(
-        @PathVariable userId: String,
+        @PathVariable auth0Id: String,
     ): ResponseEntity<List<UserSnippetDto>>
 
     /**
-     * Actualiza un usuario existente.
-     */
-    @PutMapping("/{email}")
-    fun updateUser(
-        @RequestBody author: Author,
-    ): ResponseEntity<Author>
-
-    /**
      * Agrega un snippet a un usuario con un rol específico.
+     * El usuario autenticado se obtiene del token (claim 'sub').
      */
-    @PostMapping("/add-snippet/{email:.+}")
+    @PostMapping("/add-snippet/{snippetId}")
     fun addSnippetToUser(
-        @PathVariable email: String,
-        @RequestBody addSnippet: UserSnippet,
-    ): ResponseEntity<String>
+        @RequestHeader("Authorization") token: String,
+        @PathVariable snippetId: Long,
+        @RequestBody addSnippet: AddSnippetRequest,
+    ): Mono<ResponseEntity<String>>
 
     /**
-     * Verifica si un usuario es el owner de un snippet.
+     * Verifica si el usuario autenticado (token) es el owner de un snippet.
      */
-    @PostMapping("/check-owner")
+    @PostMapping("/check-owner/{snippetId}")
     fun checkIfOwner(
-        @RequestBody checkRequest: CheckRequest,
-    ): ResponseEntity<String>
+        @RequestHeader("Authorization") token: String,
+        @PathVariable snippetId: Long,
+    ): Mono<ResponseEntity<String>>
 
     /**
-     * Valida un token JWT y retorna el ID del usuario si es válido.
+     * Valida un token JWT y retorna el Auth0 ID del usuario si es válido.
      */
     @GetMapping("/validate")
     fun validate(
         @RequestHeader("Authorization") token: String,
-    ): ResponseEntity<Long>
-
-    /**
-     * Obtiene los IDs de los snippets de un usuario por su ID.
-     */
-    @GetMapping("/snippets/{id}")
-    fun getUserSnippetsId(
-        @PathVariable id: Long,
-    ): ResponseEntity<List<Long>>
+    ): ResponseEntity<String>
 }

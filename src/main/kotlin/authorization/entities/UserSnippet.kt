@@ -5,25 +5,24 @@ import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
-import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "user_snippets")
+@Table(name = "user_snippet")
 data class UserSnippet(
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    val id: Long = 0,
-    @ManyToOne
-    val author: Author,
-    @Column(nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+    @Column(name = "auth0_id", nullable = false)
+    val auth0Id: String,
+    @Column(name = "snippet_id", nullable = false)
     val snippetId: Long,
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     val role: String,
 ) {
-    constructor() : this(0, Author(), 0, "nonexistent")
+    constructor() : this(0, "nonexistent", 0, "nonexistent")
 
     override fun toString(): String {
-        return "UserSnippet(snippetId=$snippetId, user=${author.email}, role='$role')"
+        return "UserSnippet(snippetId=$snippetId, auth0Id=$auth0Id, role='$role')"
     }
 }

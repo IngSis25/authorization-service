@@ -30,4 +30,8 @@ spring:
 
 auth0:
   audience: ${AUTH_AUDIENCE}
+  domain: ${AUTH0_DOMAIN:dev-2dc74voarsscuyp0.us.auth0.com}
+  management:
+    client-id: ${AUTH0_MANAGEMENT_CLIENT_ID}
+    client-secret: ${AUTH0_MANAGEMENT_CLIENT_SECRET}
 

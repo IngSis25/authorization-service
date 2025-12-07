@@ -1,10 +1,12 @@
 package printscript.authorization_service
 
+import authorization.AuthorizationServiceApplication
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 
 @SpringBootTest(
+    classes = [AuthorizationServiceApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     properties = [
         "spring.autoconfigure.exclude=" +

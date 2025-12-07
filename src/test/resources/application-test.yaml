@@ -29,4 +29,8 @@ spring:
 
 auth0:
   audience: dummy-audience
+  domain: dummy-domain.com
+  management:
+    client-id: dummy-management-client-id
+    client-secret: dummy-management-client-secret
 

@@ -4,5 +4,10 @@ import authorization.entities.UserSnippet
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface UserSnippetsRepository : JpaRepository<UserSnippet, Long> {
-    fun findByAuthorId(authorId: Long): List<UserSnippet>
+    fun findByAuth0Id(auth0Id: String): List<UserSnippet>
+
+    fun findByAuth0IdAndSnippetId(
+        auth0Id: String,
+        snippetId: Long,
+    ): UserSnippet?
 }

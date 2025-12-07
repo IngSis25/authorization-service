@@ -1,16 +1,17 @@
 package authorization.dtos
 
-import authorization.entities.Author
-
+import authorization.services.Auth0Service
 
 data class UserDTO(
-    val id: Long?,
-    val email: String,
+    val id: String?,
+    val email: String?,
     val auth0Id: String,
+    val name: String?,
 ) {
-    constructor(author: Author) : this(
-        id = author.id ?: 0L,
-        email = author.email,
-        auth0Id = author.auth0Id,
+    constructor(auth0User: Auth0Service.Auth0User) : this(
+        id = auth0User.user_id,
+        email = auth0User.email,
+        auth0Id = auth0User.user_id,
+        name = auth0User.name,
     )
 }
