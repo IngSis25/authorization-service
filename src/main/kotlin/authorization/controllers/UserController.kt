@@ -1,27 +1,18 @@
 package authorization.controllers
 
+import authorization.dtos.AddSnippetRequest
 import authorization.dtos.UserDTO
 import authorization.dtos.UserSnippetDto
-import authorization.entities.Author
 import authorization.entities.CreateUser
-import authorization.entities.UserSnippet
 import authorization.errors.UserNotFoundException
-import authorization.request_types.CheckRequest
 import authorization.routes.UserControllerRoutes
 import authorization.services.UserService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.oauth2.jwt.JwtDecoder
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-
+import org.springframework.web.bind.annotation.*
+import reactor.core.publisher.Mono
 
 @RestController
 @RequestMapping("/api/user")
@@ -31,114 +22,125 @@ class UserController(
     private val jwtDecoder: JwtDecoder?,
 ) : UserControllerRoutes {
     @PostMapping("/")
-
     override fun create(
         @RequestHeader("Authorization") token: String,
         @RequestBody createUser: CreateUser,
-    ): ResponseEntity<Author> {
-        val auth0Id =
-            jwtDecoder?.decode(token.removePrefix("Bearer "))?.claims?.get("sub") as? String
-                ?: throw IllegalStateException("JwtDecoder not available")
+    ): Mono<ResponseEntity<UserDTO>> {
+        // Validar token (no usamos el auth0Id acá, solo validamos que el token sea válido)
+        jwtDecoder?.decode(token.removePrefix("Bearer "))?.claims?.get("sub") as? String
+            ?: throw IllegalStateException("JwtDecoder not available")
 
-        val existingUser =
-            try {
-                userService.getByEmail(createUser.email)
-            } catch (e: UserNotFoundException) {
-                null
+        // Este endpoint solo verifica si el usuario existe en Auth0
+        return userService.getByEmail(createUser.email)
+            .map { user ->
+                ResponseEntity.status(HttpStatus.CONFLICT).body(UserDTO(user))
             }
-        return if (existingUser != null) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(existingUser)
-        } else {
-            val newUser = userService.createUser(createUser.email, auth0Id)
-            ResponseEntity.ok(newUser)
-        }
-    }
-
-    @GetMapping("/get/{id}")
-    override fun getUserById(
-        @PathVariable id: Long,
-    ): ResponseEntity<UserDTO> {
-        val user = userService.getById(id)
-        return ResponseEntity.ok(UserDTO(user))
+            .onErrorResume { e: Throwable ->
+                if (e is UserNotFoundException) {
+                    Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build())
+                } else {
+                    Mono.error(e)
+                }
+            }
     }
 
     @GetMapping("/auth0/{auth0Id}")
     override fun getUserByAuth0Id(
         @PathVariable auth0Id: String,
-    ): ResponseEntity<UserDTO> {
-        val user = userService.getByAuthId(auth0Id)
-        return ResponseEntity.ok(UserDTO(user!!))
+    ): Mono<ResponseEntity<UserDTO>> {
+        return userService.getByAuthId(auth0Id)
+            .map { user -> ResponseEntity.ok(UserDTO(user)) }
+            .onErrorResume { e: Throwable ->
+                if (e is UserNotFoundException) {
+                    Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build())
+                } else {
+                    Mono.error(e)
+                }
+            }
     }
 
     @GetMapping("/")
-    override fun getAllUsers(): ResponseEntity<List<UserDTO>> {
-        val users = userService.getAllUsers()
-        val usersDTO = users.map { user -> UserDTO(user) }
-        return ResponseEntity.ok(usersDTO)
+    override fun getAllUsers(): Mono<ResponseEntity<List<UserDTO>>> {
+        return userService.getAllUsers()
+            .map { users ->
+                val usersDTO = users.map { user -> UserDTO(user) }
+                ResponseEntity.ok(usersDTO)
+            }
+            .onErrorResume { Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()) }
     }
 
-    @PutMapping("/{email}")
-    override fun updateUser(
-        @RequestBody author: Author,
-    ): ResponseEntity<Author> {
-        return ResponseEntity.ok(userService.updateUser(author))
-    }
-
-    @GetMapping("/get-user-snippets/{userId}")
+    @GetMapping("/get-user-snippets/{auth0Id}")
     override fun getUserSnippets(
-        @PathVariable userId: String,
+        @PathVariable auth0Id: String,
     ): ResponseEntity<List<UserSnippetDto>> {
-        val snippets = userService.getSnippetsOfUser(userId)
+        val snippets = userService.getSnippetsOfUser(auth0Id)
         return ResponseEntity.ok(snippets)
     }
 
-    @PostMapping("/add-snippet/{email:.+}")
+    // NUEVO CONTRATO: usamos snippetId en el path y role en el body.
+    // El usuario se obtiene SIEMPRE del token (sub).
+    @PostMapping("/add-snippet/{snippetId}")
     override fun addSnippetToUser(
-        @PathVariable email: String,
-        @RequestBody addSnippet: UserSnippet,
-    ): ResponseEntity<String> {
-        println(">>> [AUTH] add-snippet email=$email body=$addSnippet")
+        @RequestHeader("Authorization") token: String,
+        @PathVariable snippetId: Long,
+        @RequestBody addSnippet: AddSnippetRequest,
+    ): Mono<ResponseEntity<String>> {
+        val auth0Id = extractAuth0Id(token)
+
+        println(">>> [AUTH] add-snippet auth0Id=$auth0Id snippetId=$snippetId role=${addSnippet.role}")
+
         return userService.addSnippetToUser(
-            email = email,
-            snippetId = addSnippet.snippetId,
+            auth0Id = auth0Id,
+            snippetId = snippetId,
             role = addSnippet.role,
-        )
+        ).onErrorResume { e: Throwable ->
+            println(">>> [AUTH] Error in addSnippetToUser: ${e.message}")
+            Mono.just(ResponseEntity.badRequest().body("Error adding snippet to user: ${e.message}"))
+        }
     }
 
-    @PostMapping("/check-owner")
+    @PostMapping("/check-owner/{snippetId}")
     override fun checkIfOwner(
-        @RequestBody checkRequest: CheckRequest,
-    ): ResponseEntity<String> {
-        return userService.checkIfOwner(checkRequest.snippetId, checkRequest.email)
+        @RequestHeader("Authorization") token: String,
+        @PathVariable snippetId: Long,
+    ): Mono<ResponseEntity<String>> {
+        val auth0Id = extractAuth0Id(token)
+        return userService.checkIfOwner(snippetId, auth0Id)
     }
 
     @GetMapping("/validate")
     override fun validate(
         @RequestHeader("Authorization") token: String,
-    ): ResponseEntity<Long> {
-        val actualToken = token.removePrefix("Bearer ")
-        val jwt = jwtDecoder?.decode(actualToken) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-        val auth0Id = jwt.claims["sub"] as? String ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-
-        val user = userService.getByAuthId(auth0Id)
-        return if (user != null) {
-            ResponseEntity.ok(user.id)
-        } else {
-            ResponseEntity.status(HttpStatus.NOT_FOUND).build()
+    ): ResponseEntity<String> {
+        return try {
+            val auth0Id = extractAuth0Id(token)
+            ResponseEntity.ok(auth0Id)
+        } catch (e: Exception) {
+            println("Error validating token: ${e.message}")
+            ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("")
         }
-    }
-
-    @GetMapping("/snippets/{id}")
-    override fun getUserSnippetsId(
-        @PathVariable id: Long,
-    ): ResponseEntity<List<Long>> {
-        return userService.getSnippetsId(id)
     }
 
     @GetMapping("/{email}")
     override fun getUserByEmail(
         @PathVariable email: String,
-    ): ResponseEntity<Author> {
-        return ResponseEntity.ok(userService.getByEmail(email)!!)
+    ): Mono<ResponseEntity<UserDTO>> {
+        return userService.getByEmail(email)
+            .map { user -> ResponseEntity.ok(UserDTO(user)) }
+            .onErrorResume { e: Throwable ->
+                if (e is UserNotFoundException) {
+                    Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build())
+                } else {
+                    Mono.error(e)
+                }
+            }
+    }
+
+    private fun extractAuth0Id(token: String): String {
+        val actualToken = token.removePrefix("Bearer ").trim()
+        val decoder = jwtDecoder ?: throw IllegalStateException("JwtDecoder not available")
+        val jwt = decoder.decode(actualToken)
+        return jwt.claims["sub"] as? String
+            ?: throw IllegalStateException("Token does not contain 'sub' claim")
     }
 }

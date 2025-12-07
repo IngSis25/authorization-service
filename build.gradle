@@ -60,6 +60,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactor'
@@ -85,7 +86,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux' // is only used to be able to use WebTestClient
     testImplementation 'org.amshove.kluent:kluent:1.73' // use fluent assertions
     testImplementation 'org.mockito.kotlin:mockito-kotlin:4.1.0' // mockito for kotlin
-    implementation("org.jlleitschuh.gradle.ktlint:org.jlleitschuh.gradle.ktlint.gradle.plugin:13.1.0")
 
 }
 

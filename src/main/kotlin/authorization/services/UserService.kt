@@ -1,129 +1,106 @@
 package authorization.services
 
-
 import authorization.dtos.UserSnippetDto
-import authorization.entities.Author
 import authorization.entities.UserSnippet
 import authorization.errors.UserNotFoundException
-import authorization.repositories.UserRepository
 import authorization.repositories.UserSnippetsRepository
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
-
+import reactor.core.publisher.Mono
 
 @Service
 class UserService(
-    private val userRepository: UserRepository,
+    private val auth0Service: Auth0Service,
     private val userSnippetsRepository: UserSnippetsRepository,
 ) {
-    fun getByEmail(email: String): Author? {
-        val user =
-            userRepository.findByEmail(email)
-                ?: throw UserNotFoundException("User not found when trying to get by email")
-        return user
+    fun getByEmail(email: String): Mono<Auth0Service.Auth0User> {
+        return auth0Service.getUserByEmail(email)
+            .switchIfEmpty(Mono.error(UserNotFoundException("User not found when trying to get by email")))
+            .flatMap { user ->
+                if (user != null) {
+                    Mono.just(user)
+                } else {
+                    Mono.error(UserNotFoundException("User not found when trying to get by email"))
+                }
+            }
     }
 
-    fun getById(id: Long): Author {
-        return userRepository.findById(id)
-            .orElseThrow { UserNotFoundException("User not found when trying to get by id") }
+    fun getByAuthId(auth0Id: String): Mono<Auth0Service.Auth0User> {
+        return auth0Service.getUserByAuth0Id(auth0Id)
+            .onErrorMap { e ->
+                if (e is UserNotFoundException) {
+                    e
+                } else {
+                    UserNotFoundException("User not found when trying to get by auth0Id")
+                }
+            }
     }
 
-    fun getByAuthId(auth0Id: String): Author? {
-        return userRepository.findByAuth0Id(auth0Id)
-            ?: throw UserNotFoundException("User not found when trying to get by auth0Id")
-    }
-
-    fun createUser(
-        email: String,
-        auth0Id: String,
-    ): Author {
-        val author = Author(email = email, auth0Id = auth0Id)
-        return userRepository.save(author)
-    }
-
-    fun getSnippetsOfUser(id: String): List<UserSnippetDto> {
-        try {
-            val user = getByAuthId(id)
-            return userSnippetsRepository.findByAuthorId(user?.id!!)
+    fun getSnippetsOfUser(auth0Id: String): List<UserSnippetDto> {
+        return try {
+            userSnippetsRepository.findByAuth0Id(auth0Id)
                 .map { UserSnippetDto(it.snippetId, it.role) }
         } catch (e: Exception) {
             throw UserNotFoundException("User not found when trying to get snippets")
         }
     }
 
-    fun getAllUsers(): List<Author> {
-        return userRepository.findAll().toList()
+    fun getAllUsers(): Mono<List<Auth0Service.Auth0User>> {
+        return auth0Service.getAllUsers()
     }
 
-    fun updateUser(author: Author): Author? {
-        val userOptional = userRepository.findById(author.id!!)
-        if (userOptional.isEmpty) {
-            throw UserNotFoundException("User not found when trying to update it")
-        }
-        val updatedUser = userOptional.get().copy(email = author.email, auth0Id = author.auth0Id)
-        userRepository.save(updatedUser)
-        return updatedUser
-    }
-
+    /**
+     * Nuevo contrato: recibe auth0Id directamente (sacado del token en el controller).
+     * No consulta Auth0 otra vez para esto.
+     */
     fun addSnippetToUser(
-        email: String,
+        auth0Id: String,
         snippetId: Long,
         role: String,
-    ): ResponseEntity<String> {
-        val user =
-            getByEmail(email)
-                ?: throw UserNotFoundException("User not found when trying to add a snippet to it")
-        val snippets = UserSnippet(author = user, snippetId = snippetId, role = role)
-
-        if (userSnippetRelationExists(user, snippetId)) {
-            return ResponseEntity.ok("User already has this snippet.")
-        }
-
-        try {
-            userSnippetsRepository.save(snippets)
-            return ResponseEntity.ok("Snippet added to user")
-        } catch (e: Exception) {
-            return ResponseEntity.badRequest().body("Error adding snippet to user")
-        }
-    }
-
-    private fun userSnippetRelationExists(
-        author: Author,
-        snippetId: Long,
-    ): Boolean {
-        userSnippetsRepository.findByAuthorId(author.id!!).forEach {
-            if (it.snippetId == snippetId) {
-                return true
+    ): Mono<ResponseEntity<String>> {
+        return Mono.fromCallable {
+            try {
+                val existingRelation = userSnippetsRepository.findByAuth0IdAndSnippetId(auth0Id, snippetId)
+                if (existingRelation != null) {
+                    ResponseEntity.ok("User already has this snippet.")
+                } else {
+                    val userSnippet = UserSnippet(auth0Id = auth0Id, snippetId = snippetId, role = role)
+                    userSnippetsRepository.save(userSnippet)
+                    ResponseEntity.ok("Snippet added to user")
+                }
+            } catch (e: Exception) {
+                println("Error saving user snippet: ${e.message}")
+                ResponseEntity.badRequest().body("Error adding snippet to user: ${e.message}")
             }
         }
-        return false
     }
 
+    /**
+     * Nuevo contrato: recibe auth0Id directamente (del token).
+     */
     fun checkIfOwner(
         snippetId: Long,
-        email: String,
-    ): ResponseEntity<String> {
-        val user =
-            userRepository.findByEmail(email)
-                ?: throw UserNotFoundException("User not found when trying to check if it is the owner of a snippet")
+        auth0Id: String,
+    ): Mono<ResponseEntity<String>> {
+        return Mono.fromCallable {
+            val userSnippets = userSnippetsRepository.findByAuth0Id(auth0Id)
+            val snippet = userSnippets.find { it.snippetId == snippetId }
 
-        userSnippetsRepository.findByAuthorId(user.id!!).forEach {
-            if (it.snippetId == snippetId) {
-                return if (it.role == "Owner") {
+            if (snippet != null) {
+                if (snippet.role == "Owner") {
                     ResponseEntity.ok("User is the owner of the snippet")
                 } else {
                     ResponseEntity.badRequest().body("User is not the owner of the snippet")
                 }
+            } else {
+                ResponseEntity.badRequest().body("Snippet of id provided doesn't exist")
+            }
+        }.onErrorResume { e: Throwable ->
+            if (e is UserNotFoundException) {
+                Mono.error(e)
+            } else {
+                Mono.just(ResponseEntity.badRequest().body("Error checking ownership: ${e.message}"))
             }
         }
-        return ResponseEntity.badRequest().body("Snippet of id provided doesn't exist")
-    }
-
-    fun getSnippetsId(id: Long): ResponseEntity<List<Long>> {
-        val user =
-            userRepository.findById(id)
-                .orElseThrow { UserNotFoundException("User not found when trying to get snippets") }
-        val snippetsId = userSnippetsRepository.findByAuthorId(user.id!!).map { it.id }
-        return ResponseEntity.ok(snippetsId)
     }
 }

@@ -1,13 +1,11 @@
-package services
+package authorization.services
 
-
-import authorization.entities.Author
+import authorization.dtos.UserSnippetDto
 import authorization.entities.UserSnippet
 import authorization.errors.UserNotFoundException
-import authorization.repositories.UserRepository
 import authorization.repositories.UserSnippetsRepository
-import authorization.services.UserService
 import org.amshove.kluent.shouldBeEqualTo
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -20,13 +18,12 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
-
-import java.util.Optional
+import reactor.core.publisher.Mono
 
 @ExtendWith(MockitoExtension::class)
 class UserServiceTest {
     @Mock
-    private lateinit var userRepository: UserRepository
+    private lateinit var auth0Service: Auth0Service
 
     @Mock
     private lateinit var userSnippetsRepository: UserSnippetsRepository
@@ -34,297 +31,269 @@ class UserServiceTest {
     @InjectMocks
     private lateinit var userService: UserService
 
-    private lateinit var author: Author
-    private lateinit var userSnippet: UserSnippet
+    private lateinit var auth0User: Auth0Service.Auth0User
+    private lateinit var ownerSnippet: UserSnippet
+    private lateinit var guestSnippet: UserSnippet
 
     @BeforeEach
     fun setUp() {
-        author = Author(id = 1L, email = "test@example.com", auth0Id = "auth0|123")
-        userSnippet = UserSnippet(id = 1L, author = author, snippetId = 100L, role = "Owner")
+        auth0User =
+            Auth0Service.Auth0User(
+                user_id = "auth0|123",
+                email = "test@example.com",
+                name = "Test User",
+            )
+
+        ownerSnippet =
+            UserSnippet(
+                id = 1L,
+                auth0Id = auth0User.user_id,
+                snippetId = 100L,
+                role = "Owner",
+            )
+
+        guestSnippet =
+            UserSnippet(
+                id = 2L,
+                auth0Id = auth0User.user_id,
+                snippetId = 100L,
+                role = "Guest",
+            )
     }
 
     @Test
     fun `getByEmail should return user when found`() {
         // Given
         val email = "test@example.com"
-        whenever(userRepository.findByEmail(email)).thenReturn(author)
+        whenever(auth0Service.getUserByEmail(email)).thenReturn(Mono.just(auth0User))
 
         // When
-        val result = userService.getByEmail(email)
+        val result = userService.getByEmail(email).block()
 
         // Then
-        result shouldBeEqualTo author
-        verify(userRepository).findByEmail(email)
+        result shouldBeEqualTo auth0User
+        verify(auth0Service).getUserByEmail(email)
     }
 
     @Test
     fun `getByEmail should throw UserNotFoundException when user not found`() {
         // Given
         val email = "notfound@example.com"
-        whenever(userRepository.findByEmail(email)).thenReturn(null)
+        // Simulamos "no encontrado" devolviendo Mono.empty()
+        whenever(auth0Service.getUserByEmail(email)).thenReturn(Mono.empty())
 
-        // When/Then
-        assertThrows<UserNotFoundException> {
-            userService.getByEmail(email)
-        }
-        verify(userRepository).findByEmail(email)
-    }
+        // When - el .block() debe disparar la excepción
+        val exception =
+            assertThrows<RuntimeException> {
+                userService.getByEmail(email).block()
+            }
 
-    @Test
-    fun `getById should return user when found`() {
-        // Given
-        val id = 1L
-        whenever(userRepository.findById(id)).thenReturn(Optional.of(author))
+        // Then - verificamos que la causa raíz es UserNotFoundException
+        val cause = exception.cause
+        assertTrue(cause is UserNotFoundException, "Expected UserNotFoundException but got ${cause?.javaClass}")
 
-        // When
-        val result = userService.getById(id)
-
-        // Then
-        result shouldBeEqualTo author
-        verify(userRepository).findById(id)
-    }
-
-    @Test
-    fun `getById should throw UserNotFoundException when user not found`() {
-        // Given
-        val id = 999L
-        whenever(userRepository.findById(id)).thenReturn(Optional.empty())
-
-        // When/Then
-        assertThrows<UserNotFoundException> {
-            userService.getById(id)
-        }
-        verify(userRepository).findById(id)
+        verify(auth0Service).getUserByEmail(email)
     }
 
     @Test
     fun `getByAuthId should return user when found`() {
         // Given
         val auth0Id = "auth0|123"
-        whenever(userRepository.findByAuth0Id(auth0Id)).thenReturn(author)
+        whenever(auth0Service.getUserByAuth0Id(auth0Id)).thenReturn(Mono.just(auth0User))
 
         // When
-        val result = userService.getByAuthId(auth0Id)
+        val result = userService.getByAuthId(auth0Id).block()
 
         // Then
-        result shouldBeEqualTo author
-        verify(userRepository).findByAuth0Id(auth0Id)
+        result shouldBeEqualTo auth0User
+        verify(auth0Service).getUserByAuth0Id(auth0Id)
     }
 
     @Test
     fun `getByAuthId should throw UserNotFoundException when user not found`() {
         // Given
         val auth0Id = "auth0|999"
-        whenever(userRepository.findByAuth0Id(auth0Id)).thenReturn(null)
+        whenever(auth0Service.getUserByAuth0Id(auth0Id)).thenReturn(Mono.error(UserNotFoundException("not found")))
 
-        // When/Then
-        assertThrows<UserNotFoundException> {
-            userService.getByAuthId(auth0Id)
-        }
-        verify(userRepository).findByAuth0Id(auth0Id)
-    }
+        // When - Reactor envuelve las excepciones en RuntimeException
+        val exception =
+            assertThrows<RuntimeException> {
+                userService.getByAuthId(auth0Id).block()
+            }
 
-    @Test
-    fun `createUser should create and return new user`() {
-        // Given
-        val email = "new@example.com"
-        val auth0Id = "auth0|456"
-        val savedAuthor = Author(id = 2L, email = email, auth0Id = auth0Id)
-        whenever(userRepository.save(any<Author>())).thenReturn(savedAuthor)
+        // Then - verificamos que la causa raíz es UserNotFoundException
+        val cause = exception.cause
+        assertTrue(cause is UserNotFoundException, "Expected UserNotFoundException but got ${cause?.javaClass}")
 
-        // When
-        val result = userService.createUser(email, auth0Id)
-
-        // Then
-        result.email shouldBeEqualTo email
-        result.auth0Id shouldBeEqualTo auth0Id
-        verify(userRepository).save(any<Author>())
+        verify(auth0Service).getUserByAuth0Id(auth0Id)
     }
 
     @Test
     fun `getAllUsers should return list of all users`() {
         // Given
-        val users = listOf(author, Author(id = 2L, email = "user2@example.com", auth0Id = "auth0|789"))
-        whenever(userRepository.findAll()).thenReturn(users)
+        val users =
+            listOf(
+                auth0User,
+                Auth0Service.Auth0User(
+                    user_id = "auth0|456",
+                    email = "user2@example.com",
+                    name = "Other User",
+                ),
+            )
+        whenever(auth0Service.getAllUsers()).thenReturn(Mono.just(users))
 
         // When
-        val result = userService.getAllUsers()
+        val result = userService.getAllUsers().block()
 
         // Then
-        result.size shouldBeEqualTo 2
+        result?.size shouldBeEqualTo 2
         result shouldBeEqualTo users
-        verify(userRepository).findAll()
+        verify(auth0Service).getAllUsers()
     }
 
     @Test
     fun `getSnippetsOfUser should return list of user snippets`() {
         // Given
-        val auth0Id = "auth0|123"
-        val snippets = listOf(userSnippet)
-        whenever(userRepository.findByAuth0Id(auth0Id)).thenReturn(author)
-        whenever(userSnippetsRepository.findByAuthorId(author.id!!)).thenReturn(snippets)
+        val auth0Id = auth0User.user_id
+        val snippets = listOf(ownerSnippet)
+        whenever(userSnippetsRepository.findByAuth0Id(auth0Id)).thenReturn(snippets)
 
         // When
-        val result = userService.getSnippetsOfUser(auth0Id)
+        val result: List<UserSnippetDto> = userService.getSnippetsOfUser(auth0Id)
 
         // Then
         result.size shouldBeEqualTo 1
-        result[0].snippetId shouldBeEqualTo 100L
-        result[0].role shouldBeEqualTo "Owner"
-        verify(userRepository).findByAuth0Id(auth0Id)
-        verify(userSnippetsRepository).findByAuthorId(author.id!!)
+        result[0].snippetId shouldBeEqualTo ownerSnippet.snippetId
+        result[0].role shouldBeEqualTo ownerSnippet.role
+        verify(userSnippetsRepository).findByAuth0Id(auth0Id)
     }
 
     @Test
-    fun `getSnippetsOfUser should throw UserNotFoundException when user not found`() {
+    fun `getSnippetsOfUser should throw UserNotFoundException when repository fails`() {
         // Given
-        val auth0Id = "auth0|999"
-        whenever(userRepository.findByAuth0Id(auth0Id)).thenReturn(null)
+        val auth0Id = "auth0|invalid"
+        whenever(userSnippetsRepository.findByAuth0Id(auth0Id)).thenThrow(RuntimeException("DB error"))
 
-        // When/Then
+        // When - tu implementación actual captura cualquier excepción y lanza UserNotFoundException
         assertThrows<UserNotFoundException> {
             userService.getSnippetsOfUser(auth0Id)
         }
     }
 
     @Test
-    fun `updateUser should update and return user`() {
-        // Given
-        val updatedAuthor = author.copy(email = "updated@example.com")
-        whenever(userRepository.findById(author.id!!)).thenReturn(Optional.of(author))
-        whenever(userRepository.save(any<Author>())).thenReturn(updatedAuthor)
-
-        // When
-        val result = userService.updateUser(updatedAuthor)
-
-        // Then
-        result?.email shouldBeEqualTo "updated@example.com"
-        verify(userRepository).findById(author.id!!)
-        verify(userRepository).save(any<Author>())
-    }
-
-    @Test
-    fun `updateUser should throw UserNotFoundException when user not found`() {
-        // Given
-        val nonExistentAuthor = Author(id = 999L, email = "notfound@example.com", auth0Id = "auth0|999")
-        whenever(userRepository.findById(999L)).thenReturn(Optional.empty())
-
-        // When/Then
-        assertThrows<UserNotFoundException> {
-            userService.updateUser(nonExistentAuthor)
-        }
-        verify(userRepository).findById(999L)
-        verify(userRepository, never()).save(any<Author>())
-    }
-
-    @Test
     fun `addSnippetToUser should add snippet when relation does not exist`() {
         // Given
-        val email = "test@example.com"
+        val auth0Id = auth0User.user_id
         val snippetId = 200L
         val role = "Guest"
-        val newSnippet = UserSnippet(id = 3L, author = author, snippetId = snippetId, role = role)
-        whenever(userRepository.findByEmail(email)).thenReturn(author)
-        whenever(userSnippetsRepository.findByAuthorId(author.id!!)).thenReturn(emptyList())
+        val newSnippet =
+            UserSnippet(
+                id = 3L,
+                auth0Id = auth0Id,
+                snippetId = snippetId,
+                role = role,
+            )
+
+        whenever(userSnippetsRepository.findByAuth0IdAndSnippetId(auth0Id, snippetId)).thenReturn(null)
         whenever(userSnippetsRepository.save(any<UserSnippet>())).thenReturn(newSnippet)
 
         // When
-        val result = userService.addSnippetToUser(email, snippetId, role)
+        val response = userService.addSnippetToUser(auth0Id, snippetId, role).block()!!
 
         // Then
-        result.statusCode shouldBeEqualTo HttpStatus.OK
-        result.body shouldBeEqualTo "Snippet added to user"
-        verify(userRepository).findByEmail(email)
-        verify(userSnippetsRepository).save(any<UserSnippet>())
+        response.statusCode shouldBeEqualTo HttpStatus.OK
+        response.body shouldBeEqualTo "Snippet added to user"
+        verify(userSnippetsRepository).findByAuth0IdAndSnippetId(auth0Id, snippetId)
+        verify(userSnippetsRepository).save(any())
     }
 
     @Test
     fun `addSnippetToUser should return ok when relation already exists`() {
         // Given
-        val email = "test@example.com"
+        val auth0Id = auth0User.user_id
         val snippetId = 100L
         val role = "Guest"
-        whenever(userRepository.findByEmail(email)).thenReturn(author)
-        whenever(userSnippetsRepository.findByAuthorId(author.id!!)).thenReturn(listOf(userSnippet))
+
+        whenever(
+            userSnippetsRepository.findByAuth0IdAndSnippetId(auth0Id, snippetId),
+        ).thenReturn(ownerSnippet)
 
         // When
-        val result = userService.addSnippetToUser(email, snippetId, role)
+        val response = userService.addSnippetToUser(auth0Id, snippetId, role).block()!!
 
         // Then
-        result.statusCode shouldBeEqualTo HttpStatus.OK
-        result.body shouldBeEqualTo "User already has this snippet."
-        verify(userRepository).findByEmail(email)
+        response.statusCode shouldBeEqualTo HttpStatus.OK
+        response.body shouldBeEqualTo "User already has this snippet."
+        verify(userSnippetsRepository).findByAuth0IdAndSnippetId(auth0Id, snippetId)
+        verify(userSnippetsRepository, never()).save(any())
+    }
+
+    @Test
+    fun `addSnippetToUser should return bad request when repository throws exception`() {
+        // Given
+        val auth0Id = "auth0|invalid"
+        val snippetId = 100L
+        val role = "Owner"
+
+        whenever(userSnippetsRepository.findByAuth0IdAndSnippetId(auth0Id, snippetId))
+            .thenThrow(RuntimeException("Database error"))
+
+        // When
+        val response = userService.addSnippetToUser(auth0Id, snippetId, role).block()!!
+
+        // Then
+        response.statusCode shouldBeEqualTo HttpStatus.BAD_REQUEST
+        response.body?.contains("Error adding snippet to user") shouldBeEqualTo true
+        verify(userSnippetsRepository).findByAuth0IdAndSnippetId(auth0Id, snippetId)
         verify(userSnippetsRepository, never()).save(any())
     }
 
     @Test
     fun `checkIfOwner should return ok when user is owner`() {
         // Given
-        val email = "test@example.com"
+        val auth0Id = auth0User.user_id
         val snippetId = 100L
-        whenever(userRepository.findByEmail(email)).thenReturn(author)
-        whenever(userSnippetsRepository.findByAuthorId(author.id!!)).thenReturn(listOf(userSnippet))
+
+        whenever(userSnippetsRepository.findByAuth0Id(auth0Id)).thenReturn(listOf(ownerSnippet))
 
         // When
-        val result = userService.checkIfOwner(snippetId, email)
+        val response = userService.checkIfOwner(snippetId, auth0Id).block()!!
 
         // Then
-        result.statusCode shouldBeEqualTo HttpStatus.OK
-        result.body shouldBeEqualTo "User is the owner of the snippet"
-        verify(userRepository).findByEmail(email)
-        verify(userSnippetsRepository).findByAuthorId(author.id!!)
+        response.statusCode shouldBeEqualTo HttpStatus.OK
+        response.body shouldBeEqualTo "User is the owner of the snippet"
+        verify(userSnippetsRepository).findByAuth0Id(auth0Id)
     }
 
     @Test
     fun `checkIfOwner should return bad request when user is not owner`() {
         // Given
-        val email = "test@example.com"
+        val auth0Id = auth0User.user_id
         val snippetId = 100L
-        val guestSnippet = UserSnippet(id = 2L, author = author, snippetId = snippetId, role = "Guest")
-        whenever(userRepository.findByEmail(email)).thenReturn(author)
-        whenever(userSnippetsRepository.findByAuthorId(author.id!!)).thenReturn(listOf(guestSnippet))
+
+        whenever(userSnippetsRepository.findByAuth0Id(auth0Id)).thenReturn(listOf(guestSnippet))
 
         // When
-        val result = userService.checkIfOwner(snippetId, email)
+        val response = userService.checkIfOwner(snippetId, auth0Id).block()!!
 
         // Then
-        result.statusCode shouldBeEqualTo HttpStatus.BAD_REQUEST
-        result.body shouldBeEqualTo "User is not the owner of the snippet"
+        response.statusCode shouldBeEqualTo HttpStatus.BAD_REQUEST
+        response.body shouldBeEqualTo "User is not the owner of the snippet"
     }
 
     @Test
     fun `checkIfOwner should return bad request when snippet does not exist`() {
         // Given
-        val email = "test@example.com"
+        val auth0Id = auth0User.user_id
         val snippetId = 999L
-        whenever(userRepository.findByEmail(email)).thenReturn(author)
-        whenever(userSnippetsRepository.findByAuthorId(author.id!!)).thenReturn(emptyList())
+
+        whenever(userSnippetsRepository.findByAuth0Id(auth0Id)).thenReturn(emptyList())
 
         // When
-        val result = userService.checkIfOwner(snippetId, email)
+        val response = userService.checkIfOwner(snippetId, auth0Id).block()!!
 
         // Then
-        result.statusCode shouldBeEqualTo HttpStatus.BAD_REQUEST
-        result.body shouldBeEqualTo "Snippet of id provided doesn't exist"
-    }
-
-    @Test
-    fun `getSnippetsId should return list of snippet IDs`() {
-        // Given
-        val userId = 1L
-        val snippets = listOf(userSnippet, UserSnippet(id = 2L, author = author, snippetId = 200L, role = "Guest"))
-        whenever(userRepository.findById(userId)).thenReturn(Optional.of(author))
-        whenever(userSnippetsRepository.findByAuthorId(author.id!!)).thenReturn(snippets)
-
-        // When
-        val result = userService.getSnippetsId(userId)
-
-        // Then
-        result.statusCode shouldBeEqualTo HttpStatus.OK
-        result.body?.size shouldBeEqualTo 2
-        result.body?.contains(1L) shouldBeEqualTo true
-        result.body?.contains(2L) shouldBeEqualTo true
-        verify(userRepository).findById(userId)
-        verify(userSnippetsRepository).findByAuthorId(author.id!!)
+        response.statusCode shouldBeEqualTo HttpStatus.BAD_REQUEST
+        response.body shouldBeEqualTo "Snippet of id provided doesn't exist"
     }
 }
