@@ -77,8 +77,6 @@ class UserController(
         return ResponseEntity.ok(snippets)
     }
 
-    // NUEVO CONTRATO: usamos snippetId en el path y role en el body.
-    // El usuario se obtiene SIEMPRE del token (sub).
     @PostMapping("/add-snippet/{snippetId}")
     override fun addSnippetToUser(
         @RequestHeader("Authorization") token: String,
