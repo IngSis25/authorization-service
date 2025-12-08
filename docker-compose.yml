@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 8000:8080
+      - 8002:8080
     environment:
       AUTH_SERVER_URI: https://dev-2dc74voarsscuyp0.us.auth0.com/
 
