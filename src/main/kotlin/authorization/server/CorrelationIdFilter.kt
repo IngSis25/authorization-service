@@ -25,13 +25,18 @@ class CorrelationIdFilter : Filter {
         chain: FilterChain,
     ) {
         if (request is HttpServletRequest && response is HttpServletResponse) {
-            var correlationId = request.getHeader(CorrelationIdInterceptor.CORRELATION_ID_HEADER)
+            // Buscar primero X-Request-ID, luego X-Correlation-Id (para compatibilidad)
+            var correlationId = request.getHeader("X-Request-ID")
+                ?: request.getHeader(CorrelationIdInterceptor.CORRELATION_ID_HEADER)
+            
             if (correlationId == null) {
                 correlationId = UUID.randomUUID().toString()
             }
 
             MDC.put(CorrelationIdInterceptor.CORRELATION_ID_KEY, correlationId)
 
+            // Establecer ambos headers para compatibilidad durante la transición
+            response.setHeader("X-Request-ID", correlationId)
             response.setHeader(CorrelationIdInterceptor.CORRELATION_ID_HEADER, correlationId)
 
             try {

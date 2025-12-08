@@ -18,12 +18,14 @@ class CorrelationIdInterceptor : ClientHttpRequestInterceptor {
         execution: ClientHttpRequestExecution,
     ): ClientHttpResponse {
         val correlationId = MDC.get(CORRELATION_ID_KEY) ?: UUID.randomUUID().toString()
+        // Agregar X-Request-ID para consistencia con otros servicios
+        request.headers.add("X-Request-ID", correlationId)
         request.headers.add(CORRELATION_ID_HEADER, correlationId)
         return execution.execute(request, body)
     }
 
     companion object {
-        const val CORRELATION_ID_KEY: String = "correlation-id"
-        const val CORRELATION_ID_HEADER: String = "X-Correlation-Id"
+        const val CORRELATION_ID_KEY: String = "requestId"
+        const val CORRELATION_ID_HEADER: String = "X-Request-ID"
     }
 }
