@@ -26,9 +26,10 @@ class CorrelationIdFilter : Filter {
     ) {
         if (request is HttpServletRequest && response is HttpServletResponse) {
             // Buscar primero X-Request-ID, luego X-Correlation-Id (para compatibilidad)
-            var correlationId = request.getHeader("X-Request-ID")
-                ?: request.getHeader(CorrelationIdInterceptor.CORRELATION_ID_HEADER)
-            
+            var correlationId =
+                request.getHeader("X-Request-ID")
+                    ?: request.getHeader(CorrelationIdInterceptor.CORRELATION_ID_HEADER)
+
             if (correlationId == null) {
                 correlationId = UUID.randomUUID().toString()
             }
