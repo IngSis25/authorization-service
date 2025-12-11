@@ -296,4 +296,20 @@ class UserServiceTest {
         response.statusCode shouldBeEqualTo HttpStatus.BAD_REQUEST
         response.body shouldBeEqualTo "Snippet of id provided doesn't exist"
     }
+
+    @Test
+    fun `checkIfOwner should return bad request when repository throws exception`() {
+        // Given
+        val auth0Id = auth0User.user_id
+        val snippetId = 100L
+
+        whenever(userSnippetsRepository.findByAuth0Id(auth0Id)).thenThrow(RuntimeException("Database error"))
+
+        // When
+        val response = userService.checkIfOwner(snippetId, auth0Id).block()!!
+
+        // Then
+        response.statusCode shouldBeEqualTo HttpStatus.BAD_REQUEST
+        response.body?.contains("Error checking ownership") shouldBeEqualTo true
+    }
 }
