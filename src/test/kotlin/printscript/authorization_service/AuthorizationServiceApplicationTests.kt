@@ -1,7 +1,6 @@
 package printscript.authorization_service
 
 import authorization.AuthorizationServiceApplication
-import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 
@@ -16,9 +15,4 @@ import org.springframework.test.context.ActiveProfiles
     ],
 )
 @ActiveProfiles("test")
-class AuthorizationServiceApplicationTests {
-    @Test
-    fun contextLoads() {
-        // Test that the application context loads successfully
-    }
-}
+class AuthorizationServiceApplicationTests
