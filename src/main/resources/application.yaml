@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: authorization-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:authorization-serviceDB}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:Printscript}
+    password: ${DB_PASSWORD:Ingenieria2025}
+    platform: postgres
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update
+
+  sql:
+    init:
+      platform: postgres
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_SERVER_URI}
+
+auth0:
+  audience: ${AUTH_AUDIENCE}
+  domain: ${AUTH0_DOMAIN:dev-2dc74voarsscuyp0.us.auth0.com}
+
+  management:
+    audience: ${AUTH0_MANAGEMENT_AUDIENCE:https://dev-2dc74voarsscuyp0.us.auth0.com/api/v2/}
+    client-id: ${AUTH0_MANAGEMENT_CLIENT_ID}
+    client-secret: ${AUTH0_MANAGEMENT_CLIENT_SECRET}

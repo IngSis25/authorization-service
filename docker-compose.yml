@@ -5,24 +5,33 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 8000:8080
+      - 8002:8080
     environment:
+      AUTH_SERVER_URI: https://dev-2dc74voarsscuyp0.us.auth0.com/
+
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${AUTH_SERVER_URI}
+
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE}
+
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_MANAGEMENT_AUDIENCE: ${AUTH0_MANAGEMENT_AUDIENCE}
+      AUTH0_MANAGEMENT_CLIENT_ID: ${AUTH0_MANAGEMENT_CLIENT_ID}
+      AUTH0_MANAGEMENT_CLIENT_SECRET: ${AUTH0_MANAGEMENT_CLIENT_SECRET}
+
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
+      DB_NAME: authorization-serviceDB
+      DB_HOST: postgres_db
+      DB_PORT: 5432
 
-  db:
-    container_name: postgres_db2
-    image: postgres:16
-    ports:
-      - 5434:5432
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-volumes:
-  pgdata:
+      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY}
+      NEW_RELIC_APP_NAME: Snippet Searcher
+
+
+    networks:
+      - printscript-net
+
+networks:
+  printscript-net:
+    external: true
