@@ -79,9 +79,16 @@ jobs:
           host: ${{ secrets.VM_HOST_PROD }}
           username: ${{ secrets.VM_USER_PROD }}
           key: ${{ secrets.VM_KEY_PROD }}
-          script:
-            pwd
-            cd infra
-            echo ${{ secrets.GITHUB_TOKEN }} | sudo docker login -u ${{ github.actor }} --password-stdin ghcr.io
+          script: |
+            set -e
+            cd ~/infra
+            
+            git pull || true
+
+            test -n "${{ secrets.GHCR_PAT }}" || (echo "GHCR_TOKEN is empty" && exit 1)
+
+            echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
             sudo docker compose -f docker-compose.prod.yml pull authorization-service
-            sudo docker compose -f docker-compose.prod.yml up -d authorization-service
+            sudo docker compose -f docker-compose.prod.yml up -d --force-recreate authorization-service
+            sudo docker compose -f docker-compose.prod.yml ps authorization-service
